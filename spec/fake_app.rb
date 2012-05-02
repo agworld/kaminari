@@ -53,6 +53,9 @@ class Book < ActiveRecord::Base
   has_many :authors, :through => :authorships, :source => :user
   has_many :readers, :through => :readerships, :source => :user
 end
+# a model that is a descendant of AR::Base but doesn't directly inherit AR::Base
+class Admin < User
+end
 
 # controllers
 class ApplicationController < ActionController::Base; end
@@ -72,6 +75,7 @@ Object.const_set(:ApplicationHelper, Module.new)
 #migrations
 class CreateAllTables < ActiveRecord::Migration
   def self.up
+    create_table(:gem_defined_models) { |t| t.string :name; t.integer :age }
     create_table(:users) {|t| t.string :name; t.integer :age}
     create_table(:books) {|t| t.string :title}
     create_table(:readerships) {|t| t.integer :user_id; t.integer :book_id }

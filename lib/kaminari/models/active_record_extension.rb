@@ -1,25 +1,21 @@
-require 'kaminari/models/active_record_relation_methods'
+require 'kaminari/models/active_record_model_extension'
 
 module Kaminari
   module ActiveRecordExtension
     extend ActiveSupport::Concern
     included do
-      def self.inherited(kls) #:nodoc:
-        super
-        if kls.superclass == ActiveRecord::Base
-          kls.class_eval do
-            include Kaminari::ConfigurationMethods
-  
-            # Fetch the values at the specified page number
-            #   Model.page(5)
-            scope :page, Proc.new {|num|
-              limit(default_per_page).offset(default_per_page * ([num.to_i, 1].max - 1))
-            } do
-              include Kaminari::ActiveRecordRelationMethods
-              include Kaminari::PageScopeMethods
-            end
-          end
+      # Future subclasses will pick up the model extension
+      class << self
+        def inherited_with_kaminari(kls) #:nodoc:
+          inherited_without_kaminari kls
+          kls.send(:include, Kaminari::ActiveRecordModelExtension) if kls.superclass == ActiveRecord::Base
         end
+        alias_method_chain :inherited, :kaminari
+      end
+
+      # Existing subclasses pick up the model extension as well
+      self.descendants.each do |kls|
+        kls.send(:include, Kaminari::ActiveRecordModelExtension) if kls.superclass == ActiveRecord::Base
       end
     end
   end

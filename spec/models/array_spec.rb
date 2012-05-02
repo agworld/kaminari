@@ -1,10 +1,18 @@
-require File.expand_path('../spec_helper', File.dirname(__FILE__))
+require 'spec_helper'
 
 describe Kaminari::PaginatableArray do
+  it { should have(0).items }
+
+  context 'specifying limit and offset when initializing' do
+    subject { Kaminari::PaginatableArray.new((1..100).to_a, :limit => 10, :offset => 20) }
+    its(:current_page) { should == 3 }
+  end
+
   let(:array) { Kaminari::PaginatableArray.new((1..100).to_a) }
   describe '#page' do
     shared_examples_for 'the first page of array' do
       it { should have(25).users }
+      its(:current_page) { should == 1 }
       its(:first) { should == 1 }
     end
 
@@ -20,6 +28,7 @@ describe Kaminari::PaginatableArray do
     context 'page 2' do
       subject { array.page 2 }
       it { should have(25).users }
+      its(:current_page) { should == 2 }
       its(:first) { should == 26 }
     end
 
@@ -101,5 +110,12 @@ describe Kaminari::PaginatableArray do
       subject { array.page 2 }
       its(:count) { should == 25 }
     end
+  end
+
+  context 'when setting total count explicitly' do
+    subject { Kaminari::PaginatableArray.new((1..10).to_a, :total_count => 9999).page(5).per(10) }
+    it { should have(10).items }
+    its(:first) { should == 1 }
+    its(:total_count) { should == 9999 }
   end
 end

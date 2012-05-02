@@ -1,5 +1,8 @@
-require 'kaminari/helpers/tags'
+require 'active_support/inflector'
+require 'action_view'
+require 'action_view/log_subscriber'
 require 'action_view/context'
+require 'kaminari/helpers/tags'
 
 module Kaminari
   module Helpers
@@ -26,18 +29,33 @@ module Kaminari
 
       # render given block as a view template
       def render(&block)
-        instance_eval &block if @options[:num_pages] > 1
+        instance_eval(&block) if @options[:num_pages] > 1
         @output_buffer
       end
 
       # enumerate each page providing PageProxy object as the block parameter
-      def each_page
-        return to_enum(:each_page) unless block_given?
+      # Because of performance reason, this doesn't actually enumerate all pages but pages that are seemingly relevant to the paginator.
+      # "Relevant" pages are:
+      # * pages inside the left outer window plus one for showing the gap tag
+      # * pages inside the inner window plus one on the left plus one on the right for showing the gap tags
+      # * pages inside the right outer window plus one for showing the gap tag
+      def each_relevant_page
+        return to_enum(:each_relevant_page) unless block_given?
 
-        1.upto(@options[:num_pages]) do |i|
+        relevant_pages(@window_options.merge(@options)).each do |i|
           yield PageProxy.new(@window_options.merge(@options), i, @last)
         end
       end
+      alias each_page each_relevant_page
+
+      def relevant_pages(options)
+        left_window_plus_one = 1.upto(options[:left] + 1).to_a
+        right_window_plus_one = (options[:num_pages] - options[:right]).upto(options[:num_pages]).to_a
+        inside_window_plus_each_sides = (options[:current_page] - options[:window] - 1).upto(options[:current_page] + options[:window] + 1).to_a
+
+        (left_window_plus_one + inside_window_plus_each_sides + right_window_plus_one).uniq.sort.reject {|x| (x < 1) || (x > options[:num_pages])}
+      end
+      private :relevant_pages
 
       def page_tag(page)
         @last = Page.new @template, @options.merge(:page => page)
