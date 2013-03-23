@@ -74,6 +74,8 @@ module Kaminari
         return super @window_options.merge(@options).merge :paginator => self unless subscriber
 
         # dirty hack indeed, also not threadsafe :/
+        ret  = nil
+        
         @@lock ||= Mutex.new
         @@lock.synchronize do
           # dirty hack to suppress logging render_partial
