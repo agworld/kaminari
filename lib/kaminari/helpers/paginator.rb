@@ -73,19 +73,24 @@ module Kaminari
         subscriber = ActionView::LogSubscriber.log_subscribers.detect {|ls| ls.is_a? ActionView::LogSubscriber}
         return super @window_options.merge(@options).merge :paginator => self unless subscriber
 
-        # dirty hack to suppress logging render_partial
-        class << subscriber
-          alias_method :render_partial_with_logging, :render_partial
-          # do nothing
-          def render_partial(event); end
+        # dirty hack indeed, also not threadsafe :/
+        @@lock ||= Mutex.new
+        @@lock.synchronize do
+          # dirty hack to suppress logging render_partial
+          class << subscriber
+            alias_method :render_partial_with_logging, :render_partial
+            # do nothing
+            def render_partial(event); end
+          end
+
+          ret = super @window_options.merge(@options).merge :paginator => self
+
+          class << subscriber
+            alias_method :render_partial, :render_partial_with_logging
+            undef :render_partial_with_logging
+          end
         end
 
-        ret = super @window_options.merge(@options).merge :paginator => self
-
-        class << subscriber
-          alias_method :render_partial, :render_partial_with_logging
-          undef :render_partial_with_logging
-        end
         ret
       end
 
